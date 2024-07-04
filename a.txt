@@ -1,0 +1,34 @@
+SELECT TOP 1000 [ID],[Code],[Name],[UserName],[Mobile],[Email],[Password],[Role],[Active],[StoreCount],[IsActive],[IsDeleted],[Tag1],[Tag2],[Tag3],[Tag4],[Tag5],[CreateDate],[ModifyDate],[ActiveDate],[UpdateDate],[UserID],[SocietyID],[Prefix] FROM [vijay_DemoSociety].[dbo].[UserMaster]
+
+
+<div class="fstlist"><div data-value="" class="selected">Select</div><div data-value="2">Secretary</div><div data-value="7">FM</div><div data-value="3">Treasurer</div><div data-value="4">Chairman</div><div data-value="5">Manager</div><div data-value="6">Watch Man</div></div>
+
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LoginYear>
+  <!--<Year Name="01 APR 2018 - 31 MAR 2019" Code="18041903"></Year>
+  <Year Name="01 APR 2019 - 31 MAR 2020" Code="19042003"></Year>
+  <Year Name="01 APR 2020 - 31 MAR 2021" Code="20042103"></Year>-->
+	<Year Name="01 APR 2022 - 31 MAR 2023" Code="22042303"></Year>
+	<Year Name="01 APR 2023 - 31 MAR 2024" Code="23042403"></Year>
+	<Year Name="01 APR 2024 - 31 MAR 2025" Code="24042503"></Year>
+	<!--<Year Name="01 APR 2024 - 31 MAR 2025" Code="24042503"></Year>-->
+	
+</LoginYear>
+
+/****** Script for SelectTopNRows command from SSMS  ******/
+SELECT [ID],[SN],[BuildingName],[FlatNumber],[SuperBuiltUpArea],[BuiltUpArea],[CarpetArea],[NoOfBedroom],[NoOfBathroom],[MaintenanceYearly],[MaintenanceMonthly],[ValueOfLand],[ValueOfFlatExcludingLandCost],[SinkingFundYearly],[SinkingFundMonthly],[NonOccupancyYearly],[NonOccupancyMonthly],[SocietyID],[UserID],[Commercial],[Tag2],[Tag3],[Tag4],[CreateDate],[ModifyDate],[Prefix],[Isactive],[Isdeleted] FROM [vijay_DemoSociety].[dbo].[FlatMaster]
+
+SELECT f.FlatNumber AS WingFlat,CONCAT(ISNULL(w.WingCode,''),',',ISNULL(f.ID,'')) AS WingFlatCode from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID 
+
+INSERT INTO [dbo].[VisitorMaster]([Code],[Name],[Date],[Wing],[Flat],[MobileNumber],[Photo],[Prefix],[UserID],[SocietyID]) VALUES(@Code,@Name,@Date,@Wing,@Flat,@Mobile,@Photo,@Prefix,@UserID,@SocietyID)
+
+INSERT INTO [dbo].[VisitorMaster]([Name],[Date],[Flat],[MobileNumber],[Photo]) VALUES('demo','2023-07-04 00:00:00.000',22,'1234567890','demo.png')
+
+//Saved Requst Response
+{
+    "name": "Jyotindra",
+    "mobileNumber": "1234567890",
+    "date": "2023-07-03 18:30:00.000",
+    "image": "image.png",
+    "flat": 22
+}
