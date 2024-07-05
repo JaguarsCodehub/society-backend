@@ -39,32 +39,6 @@ app.get('/api/data', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
-// app.post('/login', async (req, res) => {
-//     const { userId, password, year } = req.body;
-
-//     try {
-//         const request = new sql.Request();
-//         request.input('userId', sql.VarChar, userId);
-//         request.input('password', sql.VarChar, password);
-//         request.input('year', sql.Int, year);
-
-//         const query = `SELECT [ID], [UserName], [Role], [Active], [SocietyID], [PREFIX] 
-//                      FROM [vijay_DemoSociety].[dbo].[UserMaster] 
-//                      WHERE [UserName] = @userId AND [Password] = @password`;
-
-//         const result = await request.query(query);
-
-//         if (result.recordset.length > 0) {
-//             res.status(200).json({ msg: 'Login successful', data: result.recordset[0] });
-//         } else {
-//             res.status(401).json({ msg: 'Invalid credentials' });
-//         }
-//     } catch (error) {
-//         console.error('SQL error', error);
-//         res.status(500).json({ msg: 'Server error' });
-//     }
-// });
-
 app.post('/login', async (req, res) => {
     const { userId, password, year } = req.body;
 
@@ -74,29 +48,16 @@ app.post('/login', async (req, res) => {
         request.input('password', sql.VarChar, password);
         request.input('year', sql.Int, year);
 
-        const query = `
-            SELECT u.[ID], u.[Name], u.[UserName], u.[Role], u.[Active], u.[Prefix], isnull(s.SocietyID, '') as SocietyID
-            FROM [vijay_DemoSociety].[dbo].[UserMaster] u
-            LEFT JOIN societyregmaster s ON s.UserID = u.ID or s.UserID = u.UserID
-            WHERE u.UserName = @userId AND u.Password = @password AND u.IsActive = 1;
-        `;
-
+        const query = `SELECT u.[ID], u.[Name], u.[UserName], u.[Role], u.[Active], u.[Prefix], isnull(s.SocietyID, '') as SocietyID
+             FROM [vijay_DemoSociety].[dbo].[UserMaster] u
+             LEFT JOIN societyregmaster s ON s.UserID = u.ID or s.UserID = u.UserID
+             WHERE u.UserName = @userId AND u.Password = @password AND u.IsActive = 1;`;
         const result = await request.query(query);
-        console.log(result)
 
         if (result.recordset.length > 0) {
-            const userData = result.recordset[0];
-            console.log(userData)
-            res.status(200).json({
-                msg: 'Login successful',
-                data: {
-                    Name: userData.Name,
-                    SocietyID: userData.SocietyID,
-                    UserID: userData.ID,
-                },
-            });
+            res.status(200).json({ msg: '🟢Login successful', data: result.recordset[0] });
         } else {
-            res.status(401).json({ msg: 'Invalid credentials' });
+            res.status(401).json({ msg: '🔴Invalid credentials' });
         }
     } catch (error) {
         console.error('SQL error', error);
@@ -104,11 +65,11 @@ app.post('/login', async (req, res) => {
     }
 });
 
+
 app.get("/flats", async (req, res) => {
     try {
         const request = new sql.Request();
-        // const query = `SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode AS WingFlatCode from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID `;
-        const result = await request.query("SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode AS WingFlatCode from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID")
+        const result = await request.query("SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode, f.ID AS FlatID from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID")
         res.json(result.recordset);
     } catch (error) {
         console.error('SQL FLAT error', error);
@@ -116,40 +77,56 @@ app.get("/flats", async (req, res) => {
     }
 })
 app.post("/visitors", async (req, res) => {
-    const { name, mobileNumber, date, image, flat } = req.body;
+    const { name, mobileNumber, date, image, wingCode, flatID, ID, SocietyID, Year } = req.body;
 
     try {
+        const request = new sql.Request();
 
-        const request = new sql.Request()
+        // Query Database to get the Max Code from the Table
+        const codeQuery = "SELECT MAX(CAST(Code AS INT)) AS MaxCode FROM [dbo].[VisitorMaster]";
+        const codeResult = await request.query(codeQuery);
+
+        // Extract the maximum Code and increment it by 1
+        let newCode = "00001"; // Default value if no records are found
+        if (codeResult.recordset.length > 0 && codeResult.recordset[0].MaxCode !== null) {
+            const maxCode = parseInt(codeResult.recordset[0].MaxCode, 10);
+            newCode = String(maxCode + 1).padStart(5, '0'); // Ensure the new Code is always 5 digits
+            console.log(newCode)
+        }
+        console.log(Year)
 
         // Parameter binding to prevent SQL injection
+        request.input('code', sql.VarChar, newCode);
         request.input('name', sql.VarChar, name);
         request.input('mobileNumber', sql.VarChar, mobileNumber);
-        request.input('date', sql.DateTime, new Date(date)); // Ensure date is in correct format
-        request.input('image', sql.VarChar, image); // Assuming image is a URL or base64 string
-        request.input('flat', sql.Int, flat); // Use sql.Int for integer types
+        request.input('date', sql.DateTime, new Date(date));
+        request.input('image', sql.VarChar, image);
+        request.input('wingCode', sql.VarChar, wingCode);
+        request.input('flatID', sql.Int, flatID);
+        request.input('userID', sql.Int, ID);
+        request.input('societyID', sql.Int, SocietyID);
+        request.input('year', sql.VarChar, Year);
 
-        // SQL Insert Query
         const query = `
             INSERT INTO [dbo].[VisitorMaster] 
-            ([Name], [MobileNumber], [Date], [Photo], [Flat]) 
+            ([Code], [Name], [MobileNumber], [Date], [Photo], [Flat], [Wing], [UserID], [SocietyID], [Prefix]) 
             VALUES 
-            (@name, @mobileNumber, @date, @image, @flat);
+            (@code, @name, @mobileNumber, @date, @image, @flatID, @wingCode, @userID, @societyID, @Year);
         `;
 
         // Execute the query
         const result = await request.query(query);
-        res.status(200).json({ msg: 'Data was added successfully', data: result.recordset });
-        // console.log("success", result)
+        res.status(200).json({ msg: '🟢 Data was added to the Database successfully', data: result.recordset });
+
+
     } catch (error) {
-        console.error("SQL VISITORS POST ERROR", error);
-        res.status(500).send('Server error while adding visitor data');
+        console.error(" 🔴SQL VISITORS POST ERROR", error);
+        res.status(500).send(' 🔴Server error while adding visitor data');
     }
 });
+
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
 
-
-// const result = await request.query('INSERT INTO [dbo].[VisitorMaster] ([Name], [MobileNumber], [Date], [Photo], [Flat]) VALUES (@name, @mobileNumber, @date, @image, @flat)');
