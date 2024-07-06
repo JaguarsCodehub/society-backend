@@ -36,3 +36,12 @@ INSERT INTO [dbo].[VisitorMaster]([Name],[Date],[Flat],[MobileNumber],[Photo]) V
 
 SELECT [Name],[Wing],[Flat],[MobileNumber] FROM [vijay_DemoSociety].[dbo].[VisitorMaster]
 SELECT v.[Name],v.[Date],w.WingName,f.FlatNumber,concat(v.[Wing],',',v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.UserId=v.UserId and w.SocietyID=v.SocietyID and w.IsActive='1' and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.UserId=v.UserId and f.SocietyID=v.SocietyID and f.IsActive='1' and f.Prefix=v.Prefix
+
+
+SELECT v.[Name],v.[Date],w.WingName,f.FlatNumber,concat(v.[Wing],v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.UserId=v.UserId and w.SocietyID=v.SocietyID and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.UserId=v.UserId and f.SocietyID=v.SocietyID and f.Prefix=v.Prefix
+
+SELECT v.[Name],v.[Date],v.Wing ,w.WingName,v.Flat,f.FlatNumber,concat(v.[Wing],v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.SocietyID=v.SocietyID and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.SocietyID=v.SocietyID and f.Prefix=v.Prefix
+
+
+//Member Login
+SELECT m.ID,m.CodePWD,m.MasterCode,m.RegNo,convert (varchar,m.[Date],103) as [Date],m.MemberName,a.Wing,a.Flat,m.Guardian,m.GuardianAddress,m.MonthlyIncome,m.Occupation, convert (varchar,m.DOB,103) as DOB,m.PresentAddress,m.EmailID,m.Password,m.PermanentAddress,m.City,m.PhoneNumber,m.MobileNumber,m.Prefix,s.Name as StateName, convert (varchar,m.DateofJoiningSociety,103) as DateofJoiningSociety,convert (varchar,m.DateofLeavingSociety,103) as DateofLeavingSociety, m.MemberPhoto,m.UserID,m.SocietyID,m.State,m.PinCode from MemberRegistrationMaster m Left Join StateMaster s on m.State=s.Code Left join AssignFlat a on m.CodePWD=a.Member and m.UserID=a.UserID and m.SocietyID=a.SocietyID and a.Isactive='1' WHERE m.isdeleted='0' and (m.MobileNumber='1234567890') And ( m.Password='yv5DiHFpiiIfKaQ66TOXrL25zM8BK0o3AOsuaVU2zDo=')

@@ -3,9 +3,12 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const sql = require('mssql');
+// const cookieParser = require('cookie-parser')
 
 const app = express();
+// app.use(cookieParser())
 app.use(bodyParser.json());
+app.use(express.json());
 app.use(cors())
 
 const dbConfig = {
@@ -67,16 +70,37 @@ app.post('/login', async (req, res) => {
 
 
 app.get("/flats", async (req, res) => {
-
     try {
+        const societyid = req.headers['societyid'];
+        // const id = req.headers['id'];
+        // const year = req.headers['year'];
+
+        // Log the headers to check if they are being received
+        console.log("Headers received:", req.headers);
+
+        // Validate if these headers exist
+        if (!societyid) {
+            console.log("Missing Headers");
+            return res.status(400).send('Missing headers');
+        }
+
+        console.log("Cookies: ", societyid);
+
+        // Initializing a new SQL Request
         const request = new sql.Request();
-        const result = await request.query("SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode, f.ID AS FlatID from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID  WHERE w.SocietyID = ")
+
+        // Add parameters to the request
+        request.input('SocietyID', sql.VarChar, societyid);
+        const result = await request.query("SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode, f.ID AS FlatID from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID WHERE w.SocietyID = @SocietyID;");
+
         res.json(result.recordset);
     } catch (error) {
         console.error('SQL FLAT error', error);
         res.status(500).send('Server FLAT error');
     }
-})
+});
+
+
 app.post("/visitors", async (req, res) => {
     const { name, mobileNumber, date, image, wingCode, flatID, ID, SocietyID, Year } = req.body;
 
@@ -112,7 +136,7 @@ app.post("/visitors", async (req, res) => {
             INSERT INTO [dbo].[VisitorMaster] 
             ([Code], [Name], [MobileNumber], [Date], [Photo], [Flat], [Wing], [UserID], [SocietyID], [Prefix]) 
             VALUES 
-            (@code, @name, @mobileNumber, @date, @image, @flatID, @wingCode, @userID, @societyID, @Year);
+            (@code, @name, @mobileNumber, @date, @image, @flatID, @wingCode, @userID, @societyID, @year);
         `;
 
         // Execute the query
@@ -129,7 +153,7 @@ app.post("/visitors", async (req, res) => {
 app.get("/visitors", async (req, res) => {
     try {
         const request = new sql.Request();
-        const result = await request.query('SELECT v.[Name],v.[Date],w.WingName,f.FlatNumber,concat(v.[Wing],v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.UserId=v.UserId and w.SocietyID=v.SocietyID and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.UserId=v.UserId and f.SocietyID=v.SocietyID and f.Prefix=v.Prefix');
+        const result = await request.query('SELECT v.[Name],v.[Date],v.Wing ,w.WingName,v.Flat,f.FlatNumber,concat(v.[Wing],v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.SocietyID=v.SocietyID and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.SocietyID=v.SocietyID and f.Prefix=v.Prefix');
         res.json(result.recordsets[0]);
     } catch (err) {
         console.error('SQL error', err);
@@ -141,3 +165,25 @@ app.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
 
+app.post('/member/login', async (req, res) => {
+    const { mobileNumber, password, year } = req.body;
+
+    try {
+        const request = new sql.Request();
+        request.input('mobileNumber', sql.VarChar, mobileNumber);
+        request.input('password', sql.VarChar, password);
+        request.input('year', sql.Int, year);
+
+        const query = `SELECT m.ID,m.CodePWD,m.MasterCode,m.RegNo,convert (varchar,m.[Date],103) as [Date],m.MemberName,a.Wing,a.Flat,m.Guardian,m.GuardianAddress,m.MonthlyIncome,m.Occupation, convert (varchar,m.DOB,103) as DOB,m.PresentAddress,m.EmailID,m.Password,m.PermanentAddress,m.City,m.PhoneNumber,m.MobileNumber,m.Prefix,s.Name as StateName, convert (varchar,m.DateofJoiningSociety,103) as DateofJoiningSociety,convert (varchar,m.DateofLeavingSociety,103) as DateofLeavingSociety, m.MemberPhoto,m.UserID,m.SocietyID,m.State,m.PinCode from MemberRegistrationMaster m Left Join StateMaster s on m.State=s.Code Left join AssignFlat a on m.CodePWD=a.Member and m.UserID=a.UserID and m.SocietyID=a.SocietyID and a.Isactive='1' WHERE m.isdeleted='0' and (m.MobileNumber=@mobileNumber) And ( m.Password=@password)`;
+        const result = await request.query(query);
+
+        if (result.recordset.length > 0) {
+            res.status(200).json({ msg: '🟢Login successful', data: result.recordset[0] });
+        } else {
+            res.status(401).json({ msg: '🔴Invalid credentials' });
+        }
+    } catch (error) {
+        console.error('SQL error', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+});
