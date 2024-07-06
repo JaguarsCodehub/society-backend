@@ -67,9 +67,10 @@ app.post('/login', async (req, res) => {
 
 
 app.get("/flats", async (req, res) => {
+
     try {
         const request = new sql.Request();
-        const result = await request.query("SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode, f.ID AS FlatID from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID")
+        const result = await request.query("SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode, f.ID AS FlatID from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID  WHERE w.SocietyID = ")
         res.json(result.recordset);
     } catch (error) {
         console.error('SQL FLAT error', error);
@@ -125,6 +126,16 @@ app.post("/visitors", async (req, res) => {
     }
 });
 
+app.get("/visitors", async (req, res) => {
+    try {
+        const request = new sql.Request();
+        const result = await request.query('SELECT v.[Name],v.[Date],w.WingName,f.FlatNumber,concat(v.[Wing],v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.UserId=v.UserId and w.SocietyID=v.SocietyID and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.UserId=v.UserId and f.SocietyID=v.SocietyID and f.Prefix=v.Prefix');
+        res.json(result.recordsets[0]);
+    } catch (err) {
+        console.error('SQL error', err);
+        res.status(500).send('Server error');
+    }
+})
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
