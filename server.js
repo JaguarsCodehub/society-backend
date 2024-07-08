@@ -187,3 +187,110 @@ app.post('/member/login', async (req, res) => {
         res.status(500).json({ msg: 'Server error' });
     }
 });
+
+app.get('/member/nomination', async (req, res) => {
+    try {
+        const societyid = req.headers['societyid'];
+        const userid = req.headers['userid'];
+
+        // Log the headers to check if they are being received
+        console.log("Headers received:", req.headers);
+
+        // Validate if these headers exist
+        if (!societyid || !userid) {
+            console.log("Missing Headers");
+            return res.status(400).send('Missing headers');
+        }
+
+        console.log("Cookies-SocietyID: ", societyid);
+        console.log("Cookies-UserID: ", userid);
+
+        // Initializing a new SQL Request
+        const request = new sql.Request();
+        // Add parameters to the request
+        request.input('SocietyID', sql.VarChar, societyid);
+        request.input('UserID', sql.VarChar, userid);
+        const result = await request.query("Select n.ID as ID, ISNULL(n.MName,'') as MName,CONVERT(varchar,n.Date,103) as Date,w.WingName as MWing,f.FlatNumber as MFlat,n.NomineeName as NomineeName, n.NomineeAddress as NomineeAddress,n.NomineeAge as NomineeAge,n.NomineeRelation as NomineeRelation,n.AllotedPercentage as AllotedPercentage, ISnull(m.MemberName,'') as MemberName from Nomination n left join FlatMaster f on f.ID=n.MFlat and f.UserID=n.UserID and f.SocietyID=n.SocietyID left join WingMaster w on w.WingCode=n.MWing and w.UserID=n.UserID and w.SocietyID=n.SocietyID left join MemberRegistrationMaster m on m.CodePWD=n.MCode and m.UserID=n.UserID and m.SocietyID=n.SocietyID WHERE n.Isactive='1' and n.Isdeleted='0' and n.UserID=@UserID and n.SocietyID=@SocietyID");
+        res.json(result.recordset);
+        console.log("Result: ", result.recordset)
+
+    } catch (error) {
+        console.error('SQL NOMINATION GET error', error);
+        res.status(500).json({ msg: 'Server NOMINATION GET error' });
+    }
+})
+
+app.post('/member/complaint', async (req, res) => {
+
+    const { subject, description, image, date, status, MemberSocietyID, MemberID, UserID, MemberYear, MemberName, MemberWing, MemberFlat } = req.body
+    try {
+
+        const request = new sql.Request();
+
+        const codeQuery = "SELECT MAX(CAST(ComplaintCode AS INT)) AS MaxCode FROM [vijay_DemoSociety].[dbo].[ComplaintMaster]";
+        const codeResult = await request.query(codeQuery);
+
+        let newCode = "00001"; // Default value if no records are found
+        if (codeResult.recordset.length > 0 && codeResult.recordset[0].MaxCode !== null) {
+            const maxCode = parseInt(codeResult.recordset[0].MaxCode, 10);
+            newCode = String(maxCode + 1).padStart(4, '0'); // Ensure the new Code is always 5 digits
+        }
+
+        request.input('complaintcode', sql.VarChar, newCode);
+        request.input('memberId', sql.VarChar, MemberID);
+        request.input('membername', sql.VarChar, MemberName);
+        request.input('date', sql.DateTime, date);
+        request.input('wing', sql.VarChar, MemberWing);
+        request.input('flat', sql.VarChar, MemberFlat);
+        request.input('subject', sql.VarChar, subject);
+        request.input('description', sql.VarChar, description);
+        request.input('status', sql.VarChar, status);
+        request.input('file', sql.VarChar, image);
+        request.input('prefix', sql.VarChar, MemberYear);
+        request.input('userid', sql.Int, UserID);
+        request.input('societyid', sql.Int, MemberSocietyID);
+
+        const query = `
+            INSERT INTO [dbo].[ComplaintMaster]([ComplaintCode],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID])
+                VALUES(@complaintcode,@memberid,@membername,@date,@wing,@flat,@subject,@description,@status,@file,@prefix,@userid,@societyid)
+            INSERT INTO [dbo].[ComplaintMaster_Details]([ComplaintCode],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID])
+                VALUES(@complaintcode,@memberid,@membername,@date,@wing,@flat,@subject,@description,@status,@file,@prefix,@userid,@societyid)
+        `;
+
+        // Execute the query
+        const result = await request.query(query);
+        res.status(200).json({ msg: '🟢 Data was added to the Database successfully', data: result.recordset });
+
+    } catch (error) {
+        console.error(" 🔴SQL COMPLAINT POST ERROR", error);
+        res.status(500).send(' 🔴Server error while posting complaints');
+    }
+})
+
+app.get('/member/complaints', async (req, res) => {
+
+    try {
+
+        const memberId = req.headers['memberid'];
+
+        // Log the headers to check if they are being received
+        console.log("Headers received:", req.headers);
+
+        // Validate if these headers exist
+        if (!memberId) {
+            console.log("Missing Headers");
+            return res.status(400).send('Missing headers');
+        }
+
+        const request = new sql.Request();
+        request.input('memberId', sql.VarChar, memberId);
+        const query = `
+            SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster] WHERE MemberID = @memberId
+        `;
+        const result = await request.query(query);
+        res.json(result.recordsets[0]);
+    } catch (error) {
+        console.error(" 🔴SQL COMPLAINT GET ERROR", error);
+        res.status(500).send(' 🔴Server error while fetching complaints');
+    }
+})
