@@ -50,3 +50,6 @@ SELECT m.ID,m.CodePWD,m.MasterCode,m.RegNo,convert (varchar,m.[Date],103) as [Da
 Select n.ID as ID, ISNULL(n.MName,'') as MName,CONVERT(varchar,n.Date,103) as Date,w.WingName as MWing,f.FlatNumber as MFlat,n.NomineeName as NomineeName, n.NomineeAddress as NomineeAddress,n.NomineeAge as NomineeAge,n.NomineeRelation as NomineeRelation,n.AllotedPercentage as AllotedPercentage, ISnull(m.MemberName,'') as MemberName from Nomination n left join FlatMaster f on f.ID=n.MFlat and f.UserID=n.UserID and f.SocietyID=n.SocietyID left join WingMaster w on w.WingCode=n.MWing and w.UserID=n.UserID and w.SocietyID=n.SocietyID left join MemberRegistrationMaster m on m.CodePWD=n.MCode and m.UserID=n.UserID and m.SocietyID=n.SocietyID WHERE n.Isactive='1' and n.Isdeleted='0' and n.UserID=@UserID and n.SocietyID=@SocietyID
 
 SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster] WHERE MemberID = @memberId
+
+
+SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster_Details]

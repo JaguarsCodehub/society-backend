@@ -3,6 +3,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const sql = require('mssql');
+const decrypt = require('./dcrypt');
 // const cookieParser = require('cookie-parser')
 
 const app = express();
@@ -292,5 +293,57 @@ app.get('/member/complaints', async (req, res) => {
     } catch (error) {
         console.error(" 🔴SQL COMPLAINT GET ERROR", error);
         res.status(500).send(' 🔴Server error while fetching complaints');
+    }
+})
+
+app.post('/fm/login', async (req, res) => {
+    const { userId, password, year } = req.body;
+
+    // const decryptedPassword = decrypt(password)
+
+    try {
+        const request = new sql.Request();
+        request.input('userId', sql.VarChar, userId);
+        request.input('password', sql.VarChar, password);
+        request.input('year', sql.Int, year);
+
+        const query = `SELECT u.[ID], u.[Name], u.[UserName], u.[Role], u.[Active], u.[Prefix], isnull(s.SocietyID, '') as SocietyID
+             FROM [vijay_DemoSociety].[dbo].[UserMaster] u
+             LEFT JOIN societyregmaster s ON s.UserID = u.ID or s.UserID = u.UserID
+             WHERE u.UserName = @userId AND u.Password = @password AND u.IsActive = 1;`;
+        const result = await request.query(query);
+
+        if (result.recordset.length > 0) {
+            res.status(200).json({ msg: '🟢Login successful', data: result.recordset[0] });
+        } else {
+            res.status(401).json({ msg: '🔴Invalid credentials' });
+        }
+    } catch (error) {
+        console.error('SQL error', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+})
+
+app.get('/fm/allcomplaints', async (req, res) => {
+    try {
+
+        const societyID = req.headers['societyid'];
+
+        // Log the headers to check if they are being received
+        console.log("Headers received:", req.headers);
+
+        // Validate if these headers exist
+        if (!societyID) {
+            console.log("Missing Headers");
+            return res.status(400).send('Missing headers');
+        }
+
+        const request = new sql.Request();
+        request.input('societyID', sql.VarChar, societyID);
+        const result = await request.query('SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster_Details] WHERE SocietyID = @societyID');
+        res.json(result.recordsets[0]);
+    } catch (err) {
+        console.error('SQL error', err);
+        res.status(500).send('Server error');
     }
 })
