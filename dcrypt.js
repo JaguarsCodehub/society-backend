@@ -21,8 +21,8 @@ function decrypt(cipherText) {
 }
 
 // Example usage
-// const encryptedText = 'svkLRj9nYEgZo7gWDJD5IQ==';
-// const decryptedText = decrypt(encryptedText);
-// console.log(decryptedText);
+const encryptedText = 'jKm0HwVI+UzSlH+J7CIVyPRNibQVUiJKp/61DwVwVtc=';
+const decryptedText = decrypt(encryptedText);
+console.log(decryptedText);
 
 module.exports = decrypt

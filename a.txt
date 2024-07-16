@@ -53,3 +53,5 @@ SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],
 
 
 SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster_Details]
+
+SELECT [ID],[Code],[ServiceName],[Date],[Wing],[Flat],[Name],[Mobile],[MemberID],[MemberCode],[MemberName],[Subject],[Description],[ServiceCode],[Status],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted],[file] FROM [vijay_DemoSociety].[dbo].[Service]

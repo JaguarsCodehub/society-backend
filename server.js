@@ -231,10 +231,10 @@ app.post('/member/complaint', async (req, res) => {
         const codeQuery = "SELECT MAX(CAST(ComplaintCode AS INT)) AS MaxCode FROM [vijay_DemoSociety].[dbo].[ComplaintMaster]";
         const codeResult = await request.query(codeQuery);
 
-        let newCode = "00001"; // Default value if no records are found
+        let newCode = "0001"; // Default value if no records are found
         if (codeResult.recordset.length > 0 && codeResult.recordset[0].MaxCode !== null) {
             const maxCode = parseInt(codeResult.recordset[0].MaxCode, 10);
-            newCode = String(maxCode + 1).padStart(4, '0'); // Ensure the new Code is always 5 digits
+            newCode = String(maxCode + 1).padStart(4, '0'); // Ensure the new Code is always 4 digits
         }
 
         request.input('complaintcode', sql.VarChar, newCode);
@@ -344,6 +344,78 @@ app.get('/fm/allcomplaints', async (req, res) => {
         res.json(result.recordsets[0]);
     } catch (err) {
         console.error('SQL error', err);
+        res.status(500).send('Server error');
+    }
+})
+
+app.post('/member/service-request', async (req, res) => {
+
+    const { subject, description, date, image, serviceStatus, serviceName, serviceCode, MemberSocietyID, MemberID, UserID, MemberYear, MemberName, MemberWing, MemberFlat, MemberCode, MemberMobileNumber } = req.body
+
+    try {
+        const request = new sql.Request();
+
+        // const codeIDQuery = "SELECT MAX(ID) AS MaxCode FROM [vijay_DemoSociety].[dbo].[Service]"
+        // const codeIDResult = await request.query(codeIDQuery)
+        const codeQuery = "SELECT MAX(CAST(Code AS INT)) AS MaxCode FROM [vijay_DemoSociety].[dbo].[Service]";
+        const codeResult = await request.query(codeQuery);
+
+        // let newCodeID = 0;
+        // if (codeIDResult.recordset.length > 0 && codeIDResult.recordset[0].MaxCode !== null) {
+        //     const maxCode = parseInt(codeIDResult.recordset[0].MaxCode, 10);
+        //     newCodeID = (maxCode + 1)
+        // }
+
+        let newCode = "0001"; // Default value if no records are found
+        if (codeResult.recordset.length > 0 && codeResult.recordset[0].MaxCode !== null) {
+            const maxCode = parseInt(codeResult.recordset[0].MaxCode, 10);
+            newCode = String(maxCode + 1).padStart(4, '0'); // Ensure the new Code is always 4 digits
+        }
+
+
+        // request.input('id', sql.Int, newCodeID);
+        request.input('code', sql.VarChar, newCode);
+        request.input('memberId', sql.Int, MemberID);
+        request.input('membername', sql.VarChar, MemberName);
+        request.input('membermobileNumber', sql.VarChar, MemberMobileNumber);
+        request.input('date', sql.DateTime, date);
+        request.input('wing', sql.VarChar, MemberWing);
+        request.input('flat', sql.VarChar, MemberFlat);
+        request.input('memberCode', sql.VarChar, MemberCode);
+        request.input('subject', sql.VarChar, subject);
+        request.input('description', sql.VarChar, description);
+        request.input('status', sql.Int, serviceStatus);
+        request.input('serviceName', sql.VarChar, serviceName);
+        request.input('serviceCode', sql.VarChar, serviceCode);
+        request.input('file', sql.VarChar, image);
+        request.input('prefix', sql.VarChar, MemberYear);
+        request.input('userid', sql.Int, UserID);
+        request.input('societyid', sql.Int, MemberSocietyID);
+
+        const query = `
+            INSERT INTO [vijay_DemoSociety].[dbo].[Service] ([Code],[ServiceName],[Date],[Wing],[Flat],[Name],[Mobile],[MemberID],[MemberCode],[MemberName],[Subject],[Description],[ServiceCode],[Status],[Prefix],[UserID],[SocietyID],[file])
+                VALUES(@code,@serviceName,@date,@wing,@flat,@membername,@membermobileNumber,@memberId,@memberCode,@membername,@subject,@description,@serviceCode,@status,@prefix,@userid,@societyid,@file)
+        `;
+        // Execute the query
+        const result = await request.query(query);
+        console.log("🟢 Data was added to the Database successfully")
+        res.status(200).json({ msg: '🟢 Data was added to the Database successfully', data: result.recordset });
+
+    } catch (error) {
+        console.error(" 🔴SQL SERVICE POST ERROR", error);
+        res.status(500).send(' 🔴Server error while posting service requests');
+    }
+})
+
+
+app.get('/member/service-requests', async (req, res) => {
+    try {
+        const request = new sql.Request();
+        // request.input('societyID', sql.VarChar, societyID);
+        const result = await request.query('SELECT [ID],[Code],[ServiceName],[Date],[Wing],[Flat],[Name],[Mobile],[MemberID],[MemberCode],[MemberName],[Subject],[Description],[ServiceCode],[Status],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted],[file] FROM [vijay_DemoSociety].[dbo].[Service]');
+        res.json(result.recordsets[0]);
+    } catch (error) {
+        console.error('SQL error', error);
         res.status(500).send('Server error');
     }
 })
