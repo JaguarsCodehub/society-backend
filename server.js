@@ -1,9 +1,7 @@
-// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const sql = require('mssql');
-const decrypt = require('./dcrypt');
 // const cookieParser = require('cookie-parser')
 
 const app = express();
@@ -299,7 +297,6 @@ app.get('/member/complaints', async (req, res) => {
 app.post('/fm/login', async (req, res) => {
     const { userId, password, year } = req.body;
 
-    // const decryptedPassword = decrypt(password)
 
     try {
         const request = new sql.Request();
