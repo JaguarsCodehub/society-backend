@@ -21,7 +21,7 @@ function decrypt(cipherText) {
 }
 
 // Example usage
-const encryptedText = 'jKm0HwVI+UzSlH+J7CIVyPRNibQVUiJKp/61DwVwVtc=';
+const encryptedText = 'yv5DiHFpiiIfKaQ66TOXrL25zM8BK0o3AOsuaVU2zDo=';
 const decryptedText = decrypt(encryptedText);
 console.log(decryptedText);
 

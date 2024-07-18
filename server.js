@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const sql = require('mssql');
+const decrypt = require('./dcrypt');
+const encrypt = require('./encrypt');
 // const cookieParser = require('cookie-parser')
 
 const app = express();
@@ -44,10 +46,12 @@ app.get('/api/data', async (req, res) => {
 app.post('/login', async (req, res) => {
     const { userId, password, year } = req.body;
 
+    const decryptedPassword = encrypt(password);
+
     try {
         const request = new sql.Request();
         request.input('userId', sql.VarChar, userId);
-        request.input('password', sql.VarChar, password);
+        request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
 
         const query = `SELECT u.[ID], u.[Name], u.[UserName], u.[Role], u.[Active], u.[Prefix], isnull(s.SocietyID, '') as SocietyID
@@ -167,10 +171,12 @@ app.listen(3000, () => {
 app.post('/member/login', async (req, res) => {
     const { mobileNumber, password, year } = req.body;
 
+    const decryptedPassword = encrypt(password)
+
     try {
         const request = new sql.Request();
         request.input('mobileNumber', sql.VarChar, mobileNumber);
-        request.input('password', sql.VarChar, password);
+        request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
 
         const query = `SELECT m.ID,m.CodePWD,m.MasterCode,m.RegNo,convert (varchar,m.[Date],103) as [Date],m.MemberName,a.Wing,a.Flat,m.Guardian,m.GuardianAddress,m.MonthlyIncome,m.Occupation, convert (varchar,m.DOB,103) as DOB,m.PresentAddress,m.EmailID,m.Password,m.PermanentAddress,m.City,m.PhoneNumber,m.MobileNumber,m.Prefix,s.Name as StateName, convert (varchar,m.DateofJoiningSociety,103) as DateofJoiningSociety,convert (varchar,m.DateofLeavingSociety,103) as DateofLeavingSociety, m.MemberPhoto,m.UserID,m.SocietyID,m.State,m.PinCode from MemberRegistrationMaster m Left Join StateMaster s on m.State=s.Code Left join AssignFlat a on m.CodePWD=a.Member and m.UserID=a.UserID and m.SocietyID=a.SocietyID and a.Isactive='1' WHERE m.isdeleted='0' and (m.MobileNumber=@mobileNumber) And ( m.Password=@password)`;
@@ -297,11 +303,13 @@ app.get('/member/complaints', async (req, res) => {
 app.post('/fm/login', async (req, res) => {
     const { userId, password, year } = req.body;
 
+    const decryptedPassword = encrypt(password)
+
 
     try {
         const request = new sql.Request();
         request.input('userId', sql.VarChar, userId);
-        request.input('password', sql.VarChar, password);
+        request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
 
         const query = `SELECT u.[ID], u.[Name], u.[UserName], u.[Role], u.[Active], u.[Prefix], isnull(s.SocietyID, '') as SocietyID
