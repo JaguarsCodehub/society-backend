@@ -21,8 +21,13 @@ function decrypt(cipherText) {
 }
 
 // Example usage
-const encryptedText = 'yv5DiHFpiiIfKaQ66TOXrL25zM8BK0o3AOsuaVU2zDo=';
+const encryptedText = 'jKm0HwVI+UzSlH+J7CIVyPRNibQVUiJKp/61DwVwVtc==';
 const decryptedText = decrypt(encryptedText);
 console.log(decryptedText);
 
 module.exports = decrypt
+
+// Admin Login
+// Mmeber LLogin - Parking + Ledger
+// https://accounts.chsltd.net/Society/Ledger_Report.aspx
+// Bill GEnerate to PDF
