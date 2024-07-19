@@ -424,3 +424,121 @@ app.get('/member/service-requests', async (req, res) => {
         res.status(500).send('Server error');
     }
 })
+
+app.post('/admin/login', async (req, res) => {
+
+    const { userId, password, year } = req.body;
+
+    const decryptedPassword = encrypt(password);
+
+    try {
+        const request = new sql.Request();
+        request.input('userId', sql.VarChar, userId);
+        request.input('password', sql.VarChar, decryptedPassword);
+        request.input('year', sql.Int, year);
+
+        const query = `SELECT u.[ID], u.[Name], u.[UserName], u.[Role], u.[Active], u.[Prefix], isnull(s.SocietyID, '') as SocietyID
+             FROM [vijay_DemoSociety].[dbo].[UserMaster] u
+             LEFT JOIN societyregmaster s ON s.UserID = u.ID or s.UserID = u.UserID
+             WHERE u.UserName = @userId AND u.Password = @password AND u.IsActive = 1;`;
+        const result = await request.query(query);
+
+        if (result.recordset.length > 0) {
+            res.status(200).json({ msg: '🟢Login successful', data: result.recordset[0] });
+        } else {
+            res.status(401).json({ msg: '🔴Invalid credentials' });
+        }
+    } catch (error) {
+        console.error('SQL error', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+})
+
+app.get('/member/parking-slot', async (req, res) => {
+    try {
+        const societyid = req.headers['societyid'];
+        const userid = req.headers['userid'];
+        const membercode = req.headers['membercode'];
+
+        // Log the headers to check if they are being received
+        console.log("Headers received:", req.headers);
+
+        // Validate if these headers exist
+        if (!societyid || !userid) {
+            console.log("Missing Headers");
+            return res.status(400).send('Missing headers');
+        }
+
+        // Initializing a new SQL Request
+        const request = new sql.Request();
+        // Add parameters to the request
+        request.input('societyid', sql.VarChar, societyid);
+        request.input('userid', sql.VarChar, userid);
+        request.input('membercode', sql.VarChar, membercode);
+        const result = await request.query("SELECT [ID],[Code],[Date],[Slot],[Member],[SlotCode],[Name],[UserId],[SocietyId],[Prefix],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[AssignSlot] WHERE UserId = @userid and SocietyId = @societyid and Member = @membercode");
+        res.json(result.recordset);
+        console.log("Result: ", result.recordset)
+    } catch (error) {
+        console.error('SQL error', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+})
+
+
+app.get('/member/account-ledger', async (req, res) => {
+    try {
+
+        const societyid = req.headers['societyid'];
+        const userid = req.headers['userid'];
+        const partyCode = req.headers['membermastercode']
+
+        // Log the headers to check if they are being received
+        console.log("Headers received:", req.headers);
+
+        // Validate if these headers exist
+        if (!societyid || !userid || !partyCode) {
+            console.log("Missing Headers");
+            return res.status(400).send('Missing headers');
+        }
+
+        // Initializing a new SQL Request
+        const request = new sql.Request();
+        // Add parameters to the request
+        request.input('societyid', sql.VarChar, societyid);
+        request.input('userid', sql.VarChar, userid);
+        request.input('membermastercode', sql.VarChar, partyCode);
+
+        const query = `SELECT l.[Type],l.Srl,l.MainType,l.SubType,l.Prefix,l.Code,l.AltCode,l.Wing,l.FlatId as Flat ,isnull(TransactionNumber,'') as TransactionNumber,isnull(l.ReferenceCode,'') as ReferenceCode,isnull(l.PaymentMode,'') as PaymentMode,isnull(l.Reference,'') as Reference, isnull(l.Narr,'') as Narration,isnull(l.Value,'') as Value,Convert(varchar,l.DocDate,101) as DocDate, 'CustomerName'=
+				   Case 
+				   When (l.FlatId=c.Flat and l.FlatId>0) then concat(w.WingName,' ',f.FlatNumber)
+				   Else c.Name
+				   End,
+					cast(l.Debit as decimal(10,2)) as Debit,cast(l.Credit as Decimal(10,2)) as Credit,'0' as Balance,l.BillNumber,concat(w.WingName,' ',f.FlatNumber) Member FROM Ledger l
+					left join Master c on l.AltCode=c.Code and l.UserID=c.UserID and l.SocietyID=c.CompanyID
+					left join WingMaster w on l.Wing=w.WingCode and l.UserID=w.UserID and l.SocietyID=w.SocietyID and w.IsActive='1'
+					left join FlatMaster f on l.FlatId=f.ID and l.UserID=f.UserID and l.SocietyID=f.SocietyID and f.IsActive='1'
+					
+					WHERE
+					 (
+								@userid			= 0
+								OR l.UserID	= @userid
+						)
+						and
+						(
+							@membermastercode ='' or
+							l.Code=@membermastercode
+						)
+						and
+						(
+							@societyid =0 or 
+							l.SocietyID=@societyid
+						)`;
+        const result = await request.query(query);
+        res.json(result.recordset);
+        console.log("Result: ", result.recordset)
+
+    } catch (error) {
+        console.log("SQL LEDGER GET ERROR", error)
+        res.status(500).json({ msg: "Server Error" })
+    }
+})
