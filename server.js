@@ -542,3 +542,49 @@ app.get('/member/account-ledger', async (req, res) => {
         res.status(500).json({ msg: "Server Error" })
     }
 })
+
+
+app.get('/admin/complaint-track', async (req, res) => {
+    try {
+
+
+        const request = new sql.Request();
+        const query = `
+            SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster]
+        `;
+        const result = await request.query(query);
+        res.json(result.recordsets[0]);
+    } catch (error) {
+        console.error(" 🔴SQL COMPLAINT GET ERROR", error);
+        res.status(500).send(' 🔴Server error while fetching complaints');
+    }
+})
+
+app.get('/admin/service-requests', async (req, res) => {
+    try {
+        const request = new sql.Request();
+        // request.input('societyID', sql.VarChar, societyID);
+        const result = await request.query('SELECT [ID],[Code],[ServiceName],[Date],[Wing],[Flat],[Name],[Mobile],[MemberID],[MemberCode],[MemberName],[Subject],[Description],[ServiceCode],[Status],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted],[file] FROM [vijay_DemoSociety].[dbo].[Service]');
+        res.json(result.recordsets[0]);
+    } catch (error) {
+        console.error('SQL error', error);
+        res.status(500).send('Server error');
+    }
+})
+
+app.get('/admin/parking-slot', async (req, res) => {
+    try {
+
+
+        // Initializing a new SQL Request
+        const request = new sql.Request();
+        // Add parameters to the request
+
+        const result = await request.query("SELECT [ID],[Code],[Date],[Slot],[Member],[SlotCode],[Name],[UserId],[SocietyId],[Prefix],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[AssignSlot]");
+        res.json(result.recordset);
+        console.log("Result: ", result.recordset)
+    } catch (error) {
+        console.error('SQL error', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+})
