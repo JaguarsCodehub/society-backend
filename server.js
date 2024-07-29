@@ -15,11 +15,11 @@ app.use(cors())
 const dbConfig = {
     user: 'vijay_DemoSocietyUser',
     password: 'Z02g?ub6',
-    server: '38.242.197.161', // IP address of the SQL server
+    server: '38.242.197.161',
     database: 'Vijay_DemoSociety',
     options: {
-        encrypt: false, // Use this if you're on Windows Azure
-        trustServerCertificate: true, // Change to true for local dev / self-signed certs
+        encrypt: false,
+        trustServerCertificate: true,
     },
 };
 
@@ -75,8 +75,6 @@ app.post('/login', async (req, res) => {
 app.get("/flats", async (req, res) => {
     try {
         const societyid = req.headers['societyid'];
-        // const id = req.headers['id'];
-        // const year = req.headers['year'];
 
         // Log the headers to check if they are being received
         console.log("Headers received:", req.headers);
@@ -89,10 +87,8 @@ app.get("/flats", async (req, res) => {
 
         console.log("Cookies: ", societyid);
 
-        // Initializing a new SQL Request
         const request = new sql.Request();
 
-        // Add parameters to the request
         request.input('SocietyID', sql.VarChar, societyid);
         const result = await request.query("SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode, f.ID AS FlatID from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID WHERE w.SocietyID = @SocietyID;");
 
@@ -106,7 +102,6 @@ app.get("/flats", async (req, res) => {
 
 app.post("/visitors", async (req, res) => {
     const { name, mobileNumber, date, image, wingCode, flatID, ID, SocietyID, Year } = req.body;
-
     try {
         const request = new sql.Request();
 
@@ -134,7 +129,6 @@ app.post("/visitors", async (req, res) => {
         request.input('userID', sql.Int, ID);
         request.input('societyID', sql.Int, SocietyID);
         request.input('year', sql.VarChar, Year);
-
         const query = `
             INSERT INTO [dbo].[VisitorMaster] 
             ([Code], [Name], [MobileNumber], [Date], [Photo], [Flat], [Wing], [UserID], [SocietyID], [Prefix]) 
@@ -546,8 +540,6 @@ app.get('/member/account-ledger', async (req, res) => {
 
 app.get('/admin/complaint-track', async (req, res) => {
     try {
-
-
         const request = new sql.Request();
         const query = `
             SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster]
