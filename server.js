@@ -1,10 +1,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const http = require('http')
 const sql = require('mssql');
 const decrypt = require('./dcrypt');
 const encrypt = require('./encrypt');
-// const cookieParser = require('cookie-parser')
+const cookieParser = require('cookie-parser')
 
 const app = express();
 // app.use(cookieParser())
@@ -580,3 +581,145 @@ app.get('/admin/parking-slot', async (req, res) => {
         res.status(500).json({ msg: 'Server error' });
     }
 })
+
+app.post('/notices', async (req, res) => {
+    const { title, content, author } = req.body;
+
+    try {
+        const request = new sql.Request();
+
+        // Generate a unique code for the notice
+        // const codeQuery = "SELECT MAX(CAST(Code AS INT)) AS MaxCode FROM [dbo].[NoticeMaster]";
+        // const codeResult = await request.query(codeQuery);
+        // let newCode = "00001";
+        // if (codeResult.recordset.length > 0 && codeResult.recordset[0].MaxCode !== null) {
+        //     const maxCode = parseInt(codeResult.recordset[0].MaxCode, 10);
+        //     newCode = String(maxCode + 1).padStart(5, '0');
+        // }
+
+        // Parameter binding to prevent SQL injection
+        // request.input('code', sql.VarChar, newCode);
+        request.input('title', sql.VarChar, title);
+        request.input('content', sql.VarChar, content);
+        request.input('author', sql.VarChar, author);
+        request.input('date', sql.DateTime, new Date());
+
+        const query = `
+            INSERT INTO [dbo].[NoticeMaster] 
+            ([Title], [Content], [Author], [Date], [IsActive], [IsDeleted]) 
+            VALUES 
+            (@title, @content, @author, @date, 1, 0);
+        `;
+
+        // Execute the query
+        const result = await request.query(query);
+        res.status(200).json({ msg: '🟢 Notice was added successfully' });
+
+    } catch (error) {
+        console.error(" 🔴SQL NOTICE POST ERROR", error);
+        res.status(500).send(' 🔴Server error while adding notice');
+    }
+});
+
+app.get('/notices', async (req, res) => {
+    try {
+        const request = new sql.Request();
+
+        const query = `
+            SELECT [ID], [Title], [Content], [Author], [Date]
+            FROM [dbo].[NoticeMaster]
+            WHERE [IsActive] = 1 AND [IsDeleted] = 0
+            ORDER BY [Date] DESC
+        `;
+
+        const result = await request.query(query);
+        res.status(200).json({ msg: '🟢 Notices fetched successfully', data: result.recordset });
+    } catch (error) {
+        console.error(" 🔴SQL NOTICE GET ERROR", error);
+        res.status(500).send(' 🔴Server error while fetching notices');
+    }
+});
+
+
+// Create a new poll
+app.post('/polls', async (req, res) => {
+    try {
+        const { question, options } = req.body;
+        const request = new sql.Request();
+        const result = await request
+            .input('question', sql.NVarChar, question)
+            .input('options', sql.NVarChar, JSON.stringify(options))
+            .input('votes', sql.NVarChar, JSON.stringify(new Array(options.length).fill(0)))
+            .query('INSERT INTO Polls (question, options, votes) OUTPUT INSERTED.id VALUES (@question, @options, @votes)');
+
+        res.json({ id: result.recordset[0].id });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+    }
+});
+
+// Get all polls
+app.get('/polls', async (req, res) => {
+    try {
+        // const pool = await sql.connect(config);
+        const request = new sql.Request();
+        const query = `SELECT * FROM Polls`;
+        const result = await request.query(query);
+        res.json(result.recordset.map(poll => ({
+            ...poll,
+            options: JSON.parse(poll.options),
+            votes: JSON.parse(poll.votes)
+        })));
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+    }
+});
+
+// Vote on a poll
+app.post('/polls/:id/vote', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { optionIndex } = req.body;
+
+        // First, get the current votes
+        const request = new sql.Request();
+        const currentPoll = await request
+            .input('id', sql.Int, id)
+            .query('SELECT votes FROM Polls WHERE id = @id');
+
+        const votes = JSON.parse(currentPoll.recordset[0].votes);
+        votes[optionIndex]++;
+
+        // Update the votes
+        const updateRequest = new sql.Request();
+        await updateRequest
+            .input('id', sql.Int, id)
+            .input('votes', sql.NVarChar, JSON.stringify(votes))
+            .query('UPDATE Polls SET votes = @votes WHERE id = @id');
+
+        res.json({ message: 'Vote recorded successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+    }
+});
+// CREATE TABLE NoticeMaster (
+//     ID INT IDENTITY(1,1) PRIMARY KEY,
+//     Title NVARCHAR(255) NOT NULL,
+//     Content NVARCHAR(MAX) NOT NULL,
+//     Author NVARCHAR(100) NOT NULL,
+//     Date DATETIME NOT NULL,
+//     IsActive BIT NOT NULL DEFAULT 1,
+//     IsDeleted BIT NOT NULL DEFAULT 0
+// );
+
+// CREATE TABLE Polls (
+//     id INT IDENTITY(1,1) PRIMARY KEY,
+//     question NVARCHAR(255) NOT NULL,
+//     options NVARCHAR(MAX) NOT NULL,
+//     votes NVARCHAR(MAX) NOT NULL,
+//     created_at DATETIME DEFAULT GETDATE()
+// );
+// );
