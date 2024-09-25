@@ -18,8 +18,8 @@ function encrypt(plainText) {
     return encrypted.toString('base64').replace(/\+/g, ' ');
 }
 
-// const plainText = '123';
-// const cipherText = encrypt(plainText);
-// console.log('Encrypted:', cipherText);
+const plainText = '123';
+const cipherText = encrypt(plainText);
+console.log('Encrypted:', cipherText);
 
 module.exports = encrypt

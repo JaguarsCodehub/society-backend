@@ -705,6 +705,82 @@ app.post('/polls/:id/vote', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
+
+app.post('/api/create-register', async (req, res) => {
+    const { owners, jointMembers } = req.body;
+
+    try {
+        const pool = await sql.connect(dbConfig);
+        const transaction = new sql.Transaction(pool);
+
+        try {
+            await transaction.begin();
+
+            // Get the max code and increment it
+            const maxCodeResult = await transaction.request()
+                .query('SELECT MAX(CAST(Code AS INT)) AS MaxCode FROM JRegisters');
+
+            let newCode = 1;
+            if (maxCodeResult.recordset[0].MaxCode) {
+                newCode = maxCodeResult.recordset[0].MaxCode + 1;
+            }
+            const codeString = newCode.toString().padStart(4, '0');
+
+            // Convert owners and jointMembers arrays to JSON strings
+            const ownersJson = JSON.stringify(owners);
+            const jointMembersJson = JSON.stringify(jointMembers);
+
+            // Insert JRegister entry
+            const result = await transaction.request()
+                .input('Code', sql.VarChar(10), codeString)
+                .input('Owners', sql.NVarChar(sql.MAX), ownersJson)
+                .input('JointMembers', sql.NVarChar(sql.MAX), jointMembersJson)
+                .query('INSERT INTO JRegisters (Code, Owners, JointMembers) VALUES (@Code, @Owners, @JointMembers)');
+
+            await transaction.commit();
+            res.status(201).json({ message: 'J Register created successfully', code: codeString });
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error creating J Register:', error);
+        res.status(500).json({ message: 'Error creating J Register' });
+    }
+});
+
+app.get('/api/all-registers', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query(`
+            SELECT 
+                ID AS RegisterID,
+                Code AS RegisterCode,
+                CreatedAt,
+                Owners,
+                JointMembers
+            FROM 
+                JRegisters
+            ORDER BY 
+                CreatedAt DESC;
+        `);
+
+        // Parse JSON strings to objects
+        const formattedResult = result.recordset.map(record => ({
+            ...record,
+            Owners: JSON.parse(record.Owners),
+            JointMembers: JSON.parse(record.JointMembers)
+        }));
+
+        res.json(formattedResult);
+    } catch (error) {
+        console.error('Error fetching all registers:', error);
+        res.status(500).json({ message: 'Error fetching all registers' });
+    }
+});
+
+
 // CREATE TABLE NoticeMaster (
 //     ID INT IDENTITY(1,1) PRIMARY KEY,
 //     Title NVARCHAR(255) NOT NULL,
@@ -721,5 +797,4 @@ app.post('/polls/:id/vote', async (req, res) => {
 //     options NVARCHAR(MAX) NOT NULL,
 //     votes NVARCHAR(MAX) NOT NULL,
 //     created_at DATETIME DEFAULT GETDATE()
-// );
 // );
