@@ -818,6 +818,37 @@ app.post('/sendNotification', async (req, res) => {
     }
 });
 
+// Modify this endpoint to handle member responses
+app.post('/visitorResponse', async (req, res) => {
+    const { response } = req.body;
+
+    if (!response) {
+        return res.status(400).json({ error: 'Missing response' });
+    }
+
+    try {
+        // Log the response
+        console.log(`response: ${response}`);
+
+        // Here you would typically update the visitor's status in your database
+        // For example:
+        // await updateVisitorStatus(visitorId, response);
+
+        // You might also want to notify the security or reception about the decision
+        // For example:
+        // await notifySecurityAboutVisitor(visitorId, response);
+
+        // If you have a real-time system, you might want to emit an event
+        // For example:
+        // io.emit('visitorResponseUpdated', { visitorId, response });
+
+        res.status(200).json({ message: 'Response received and processed successfully' });
+    } catch (error) {
+        console.error('Error processing visitor response:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 async function sendPushNotification(expoPushToken, message) {
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
@@ -832,6 +863,11 @@ async function sendPushNotification(expoPushToken, message) {
             title: 'Visitor Alert',
             body: message,
             data: { someData: 'goes here' },
+            categoryId: 'visitor_response',
+            buttons: [
+                { id: 'yes', title: 'Yes' },
+                { id: 'no', title: 'No' }
+            ],
         }),
     });
 
