@@ -164,7 +164,7 @@ app.listen(3000, () => {
 });
 
 app.post('/member/login', async (req, res) => {
-    const { mobileNumber, password, year } = req.body;
+    const { mobileNumber, password, year, expoPushToken } = req.body;
 
     const decryptedPassword = encrypt(password)
 
@@ -173,8 +173,16 @@ app.post('/member/login', async (req, res) => {
         request.input('mobileNumber', sql.VarChar, mobileNumber);
         request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
+        request.input('expoPushToken', sql.VarChar, expoPushToken);
 
-        const query = `SELECT m.ID,m.CodePWD,m.MasterCode,m.RegNo,convert (varchar,m.[Date],103) as [Date],m.MemberName,a.Wing,a.Flat,m.Guardian,m.GuardianAddress,m.MonthlyIncome,m.Occupation, convert (varchar,m.DOB,103) as DOB,m.PresentAddress,m.EmailID,m.Password,m.PermanentAddress,m.City,m.PhoneNumber,m.MobileNumber,m.Prefix,s.Name as StateName, convert (varchar,m.DateofJoiningSociety,103) as DateofJoiningSociety,convert (varchar,m.DateofLeavingSociety,103) as DateofLeavingSociety, m.MemberPhoto,m.UserID,m.SocietyID,m.State,m.PinCode from MemberRegistrationMaster m Left Join StateMaster s on m.State=s.Code Left join AssignFlat a on m.CodePWD=a.Member and m.UserID=a.UserID and m.SocietyID=a.SocietyID and a.Isactive='1' WHERE m.isdeleted='0' and (m.MobileNumber=@mobileNumber) And ( m.Password=@password)`;
+        const query = `
+            UPDATE MemberRegistrationMaster 
+            SET pushtoken = @expoPushToken 
+            WHERE MobileNumber = @mobileNumber AND Password = @password;
+
+            SELECT m.ID,m.pushtoken,m.CodePWD,m.MasterCode,m.RegNo,convert (varchar,m.[Date],103) as [Date],m.MemberName,a.Wing,a.Flat,m.Guardian,m.GuardianAddress,m.MonthlyIncome,m.Occupation, convert (varchar,m.DOB,103) as DOB,m.PresentAddress,m.EmailID,m.Password,m.PermanentAddress,m.City,m.PhoneNumber,m.MobileNumber,m.Prefix,s.Name as StateName, convert (varchar,m.DateofJoiningSociety,103) as DateofJoiningSociety,convert (varchar,m.DateofLeavingSociety,103) as DateofLeavingSociety, m.MemberPhoto,m.UserID,m.SocietyID,m.State,m.PinCode from MemberRegistrationMaster m Left Join StateMaster s on m.State=s.Code Left join AssignFlat a on m.CodePWD=a.Member and m.UserID=a.UserID and m.SocietyID=a.SocietyID and a.Isactive='1' WHERE m.isdeleted='0' and (m.MobileNumber=@mobileNumber) And ( m.Password=@password)
+        `;
+
         const result = await request.query(query);
 
         if (result.recordset.length > 0) {
@@ -780,7 +788,56 @@ app.get('/api/all-registers', async (req, res) => {
     }
 });
 
+app.post('/sendNotification', async (req, res) => {
+    const { wingCode, flatID, message } = req.body;
 
+    try {
+        const request = new sql.Request();
+        request.input('wingCode', sql.VarChar, wingCode);
+        request.input('flatID', sql.Int, flatID);
+
+        const query = `
+        SELECT m.pushtoken
+        FROM MemberRegistrationMaster m
+        JOIN AssignFlat a ON m.CodePWD = a.Member AND m.UserID = a.UserID AND m.SocietyID = a.SocietyID
+        WHERE a.Wing = @wingCode AND a.Flat = @flatID AND a.Isactive = '1'
+      `;
+
+        const result = await request.query(query);
+
+        if (result.recordset.length > 0 && result.recordset[0].pushtoken) {
+            const expoPushToken = result.recordset[0].pushtoken;
+            await sendPushNotification(expoPushToken, message);
+            res.status(200).json({ msg: 'Notification sent successfully' });
+        } else {
+            res.status(404).json({ msg: 'Member not found or push token not available' });
+        }
+    } catch (error) {
+        console.error('Error sending notification:', error);
+        res.status(500).json({ msg: 'Server error' });
+    }
+});
+
+async function sendPushNotification(expoPushToken, message) {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            to: expoPushToken,
+            sound: 'default',
+            title: 'Visitor Alert',
+            body: message,
+            data: { someData: 'goes here' },
+        }),
+    });
+
+    const result = await response.json();
+    console.log('Notification sent:', result);
+}
 // CREATE TABLE NoticeMaster (
 //     ID INT IDENTITY(1,1) PRIMARY KEY,
 //     Title NVARCHAR(255) NOT NULL,
