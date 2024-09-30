@@ -807,7 +807,7 @@ app.post('/sendNotification', async (req, res) => {
 
         if (result.recordset.length > 0 && result.recordset[0].pushtoken) {
             const expoPushToken = result.recordset[0].pushtoken;
-            await sendPushNotification(expoPushToken, message);
+            await sendPushNotification(expoPushToken, message, wingCode, flatID);
             res.status(200).json({ msg: 'Notification sent successfully' });
         } else {
             res.status(404).json({ msg: 'Member not found or push token not available' });
@@ -820,27 +820,24 @@ app.post('/sendNotification', async (req, res) => {
 
 // Modify this endpoint to handle member responses
 app.post('/visitorResponse', async (req, res) => {
-    const { response } = req.body;
+    const { response, wingCode, flatID } = req.body;
 
-    if (!response) {
-        return res.status(400).json({ error: 'Missing response' });
+    if (!response || !wingCode || !flatID) {
+        return res.status(400).json({ error: 'Missing required fields' });
     }
 
     try {
         // Log the response
-        console.log(`response: ${response}`);
+        console.log(`Response: ${response}, WingCode: ${wingCode}, FlatID: ${flatID}`);
 
-        // Here you would typically update the visitor's status in your database
-        // For example:
-        // await updateVisitorStatus(visitorId, response);
+        // Update the visitor's status in your database
+        await updateVisitorStatus(response, wingCode, flatID);
 
-        // You might also want to notify the security or reception about the decision
-        // For example:
-        // await notifySecurityAboutVisitor(visitorId, response);
+        // Notify the security or reception about the decision
+        await notifySecurityAboutVisitor(response, wingCode, flatID);
 
         // If you have a real-time system, you might want to emit an event
-        // For example:
-        // io.emit('visitorResponseUpdated', { visitorId, response });
+        // io.emit('visitorResponseUpdated', { visitorId, response, wingCode, flatID });
 
         res.status(200).json({ message: 'Response received and processed successfully' });
     } catch (error) {
@@ -849,7 +846,26 @@ app.post('/visitorResponse', async (req, res) => {
     }
 });
 
-async function sendPushNotification(expoPushToken, message) {
+async function updateVisitorStatus(response, wingCode, flatID) {
+    // Implement the logic to update the visitor's status in your database
+    // For example:
+    // const request = new sql.Request();
+    // await request.query`
+    //     UPDATE VisitorTable
+    //     SET Status = ${response}, WingCode = ${wingCode}, FlatID = ${flatID}
+    //     WHERE VisitorID = ${visitorId}
+    // `;
+
+    console.log("VisitorStatusUpdated:", response, wingCode, flatID)
+}
+
+async function notifySecurityAboutVisitor(response, wingCode, flatID) {
+    // Implement the logic to notify security about the visitor's status
+    // This could involve sending a message to a security dashboard or another notification system
+    console.log(`notifySecurityAboutVisitor Function Called: ${response} for Wing ${wingCode}, Flat ${flatID}`);
+}
+
+async function sendPushNotification(expoPushToken, message, wingCode, flatID) {
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
@@ -862,7 +878,7 @@ async function sendPushNotification(expoPushToken, message) {
             sound: 'default',
             title: 'Visitor Alert',
             body: message,
-            data: { someData: 'goes here' },
+            data: { wingCode, flatID },
             categoryId: 'visitor_response',
             buttons: [
                 { id: 'yes', title: 'Yes' },
