@@ -45,7 +45,7 @@ app.get('/api/data', async (req, res) => {
     }
 });
 app.post('/login', async (req, res) => {
-    const { userId, password, year } = req.body;
+    const { userId, password, year, expoPushToken } = req.body;
 
     const decryptedPassword = encrypt(password);
 
@@ -54,11 +54,18 @@ app.post('/login', async (req, res) => {
         request.input('userId', sql.VarChar, userId);
         request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
+        request.input('expoPushToken', sql.VarChar, expoPushToken);
 
-        const query = `SELECT u.[ID], u.[Name], u.[UserName], u.[Role], u.[Active], u.[Prefix], isnull(s.SocietyID, '') as SocietyID
+        const query = `
+            UPDATE UserMaster
+            SET expoPushtoken = @expoPushToken 
+            WHERE UserName = @userId AND Password = @password;
+
+            SELECT u.[ID], u.[Name], u.[UserName], u.[Role], u.[Active], u.[Prefix], isnull(s.SocietyID, '') as SocietyID
              FROM [vijay_DemoSociety].[dbo].[UserMaster] u
              LEFT JOIN societyregmaster s ON s.UserID = u.ID or s.UserID = u.UserID
-             WHERE u.UserName = @userId AND u.Password = @password AND u.IsActive = 1;`;
+             WHERE u.UserName = @userId AND u.Password = @password AND u.IsActive = 1;
+        `;
         const result = await request.query(query);
 
         if (result.recordset.length > 0) {
@@ -831,7 +838,7 @@ app.post('/visitorResponse', async (req, res) => {
         console.log(`Response: ${response}, WingCode: ${wingCode}, FlatID: ${flatID}`);
 
         // Update the visitor's status in your database
-        await updateVisitorStatus(response, wingCode, flatID);
+        // await updateVisitorStatus(response, wingCode, flatID);
 
         // Notify the security or reception about the decision
         await notifySecurityAboutVisitor(response, wingCode, flatID);
@@ -860,9 +867,34 @@ async function updateVisitorStatus(response, wingCode, flatID) {
 }
 
 async function notifySecurityAboutVisitor(response, wingCode, flatID) {
-    // Implement the logic to notify security about the visitor's status
-    // This could involve sending a message to a security dashboard or another notification system
-    console.log(`notifySecurityAboutVisitor Function Called: ${response} for Wing ${wingCode}, Flat ${flatID}`);
+    try {
+        const request = new sql.Request();
+
+        // Fetch the watchman's expoPushToken
+        const query = `
+            SELECT u.expoPushToken
+            FROM UserMaster u
+            WHERE u.UserName = 'watchman'
+        `;
+
+        request.input('wingCode', sql.VarChar, wingCode);
+        request.input('flatID', sql.Int, flatID);
+
+        const result = await request.query(query);
+
+        if (result.recordset.length > 0 && result.recordset[0].expoPushToken) {
+            const expoPushToken = result.recordset[0].expoPushToken;
+            const message = `Visitor shoudl be ${response === 'Allowed' ? 'allowed' : 'denied'}.`;
+
+            // Send the notification
+            await sendPushNotification(expoPushToken, message, wingCode, flatID);
+            console.log('Notification sent to watchman:', message);
+        } else {
+            console.log('Watchman not found or push token not available');
+        }
+    } catch (error) {
+        console.error('Error notifying security about visitor:', error);
+    }
 }
 
 async function sendPushNotification(expoPushToken, message, wingCode, flatID) {
