@@ -1100,7 +1100,7 @@ async function notifySecurityAboutVisitor(response, wingCode, flatID) {
             const message = `Visitor shoudl be ${response === 'Allowed' ? 'allowed' : 'denied'}.`;
 
             // Send the notification
-            await sendPushNotificationToWatchman(expoPushToken, message, wingCode, flatID);
+            await sendPushNotification(expoPushToken, message, wingCode, flatID);
             console.log('Notification sent to watchman:', message);
         } else {
             console.log('Watchman not found or push token not available');
