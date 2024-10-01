@@ -34,6 +34,10 @@ sql.connect(dbConfig, (err) => {
     }
 });
 
+app.get('/', (req, res) => {
+    res.send('Hello World');
+});
+
 app.get('/api/data', async (req, res) => {
     try {
         const request = new sql.Request();
@@ -1006,3 +1010,4 @@ async function sendPushNotificationToWatchman(expoPushToken, message, wingCode, 
 //     created_at DATETIME DEFAULT GETDATE()
 // );
 
+module.exports = app;
