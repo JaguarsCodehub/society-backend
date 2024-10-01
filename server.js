@@ -22,13 +22,14 @@ const dbConfig = {
     options: {
         encrypt: true,
         trustServerCertificate: true,
+        enableArithAbort: true
     },
 };
 
 async function getDbConnection() {
     try {
-        await sql.connect(dbConfig);
-        return sql;
+        const pool = await sql.connect(dbConfig);
+        return pool;
     } catch (err) {
         console.error('Error connecting to the database:', err);
         throw err;
@@ -185,21 +186,20 @@ app.post("/visitors", async (req, res) => {
 });
 
 app.get("/visitors", async (req, res) => {
-    let connection;
+    let pool;
     try {
-        connection = await getDbConnection();
-        const request = connection.request();
-        const result = await request.query('SELECT v.[Name],v.[Date],v.Wing ,w.WingName,v.Flat,f.FlatNumber,concat(v.[Wing],v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.SocietyID=v.SocietyID and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.SocietyID=v.SocietyID and f.Prefix=v.Prefix');
+        pool = await getDbConnection();
+        const result = await pool.request().query('SELECT v.[Name],v.[Date],v.Wing ,w.WingName,v.Flat,f.FlatNumber,concat(v.[Wing],v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.SocietyID=v.SocietyID and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.SocietyID=v.SocietyID and f.Prefix=v.Prefix');
         res.json(result.recordsets[0]);
     } catch (err) {
         console.error('SQL error', err);
         res.status(500).send('Server error');
     } finally {
-        if (connection) {
-            await connection.close();
+        if (pool) {
+            await pool.close();
         }
     }
-})
+});
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
