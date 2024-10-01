@@ -887,7 +887,7 @@ async function notifySecurityAboutVisitor(response, wingCode, flatID) {
             const message = `Visitor shoudl be ${response === 'Allowed' ? 'allowed' : 'denied'}.`;
 
             // Send the notification
-            await sendPushNotification(expoPushToken, message, wingCode, flatID);
+            await sendPushNotificationToWatchman(expoPushToken, message, wingCode, flatID);
             console.log('Notification sent to watchman:', message);
         } else {
             console.log('Watchman not found or push token not available');
@@ -916,6 +916,27 @@ async function sendPushNotification(expoPushToken, message, wingCode, flatID) {
                 { id: 'yes', title: 'Yes' },
                 { id: 'no', title: 'No' }
             ],
+        }),
+    });
+
+    const result = await response.json();
+    console.log('Notification sent:', result);
+}
+
+async function sendPushNotificationToWatchman(expoPushToken, message, wingCode, flatID) {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            to: expoPushToken,
+            sound: 'default',
+            title: 'Visitor Alert',
+            body: message,
+            data: { wingCode, flatID },
         }),
     });
 
