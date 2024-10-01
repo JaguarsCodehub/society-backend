@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -14,38 +15,44 @@ app.use(express.json());
 app.use(cors())
 
 const dbConfig = {
-    user: 'vijay_DemoSocietyUser',
-    password: 'Z02g?ub6',
-    server: '38.242.197.161',
-    database: 'Vijay_DemoSociety',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_NAME,
     options: {
-        encrypt: false,
+        encrypt: true,
         trustServerCertificate: true,
     },
 };
 
-
-
-sql.connect(dbConfig, (err) => {
-    if (err) {
-        console.log('Error connecting to the database:', err);
-    } else {
-        console.log('Connected to the database');
+async function getDbConnection() {
+    try {
+        await sql.connect(dbConfig);
+        return sql;
+    } catch (err) {
+        console.error('Error connecting to the database:', err);
+        throw err;
     }
-});
+}
 
 app.get('/', (req, res) => {
     res.send('Hello World');
 });
 
 app.get('/api/data', async (req, res) => {
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         const result = await request.query('SELECT [ID],[Code],[Name],[UserName],[Mobile],[Email],[Password],[Role],[Active],[StoreCount],[IsActive],[IsDeleted],[Tag1],[Tag2],[Tag3],[Tag4],[Tag5],[CreateDate],[ModifyDate],[ActiveDate],[UpdateDate],[UserID],[SocietyID],[Prefix] FROM [vijay_DemoSociety].[dbo].[UserMaster]'); // Replace YourTable with your actual table name
         res.json(result.recordset);
     } catch (err) {
         console.error('SQL error', err);
         res.status(500).send('Server error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 app.post('/login', async (req, res) => {
@@ -53,8 +60,10 @@ app.post('/login', async (req, res) => {
 
     const decryptedPassword = encrypt(password);
 
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         request.input('userId', sql.VarChar, userId);
         request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
@@ -80,11 +89,16 @@ app.post('/login', async (req, res) => {
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).json({ msg: 'Server error' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 
 app.get("/flats", async (req, res) => {
+    let connection;
     try {
         const societyid = req.headers['societyid'];
 
@@ -99,7 +113,8 @@ app.get("/flats", async (req, res) => {
 
         console.log("Cookies: ", societyid);
 
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
 
         request.input('SocietyID', sql.VarChar, societyid);
         const result = await request.query("SELECT CONCAT(w.WingName,f.FlatNumber) AS WingFlat,w.WingCode, f.ID AS FlatID from FlatMaster f inner join WingMaster w on f.BuildingName=w.WingCode and f.UserID=w.UserID and f.SocietyID=w.SocietyID WHERE w.SocietyID = @SocietyID;");
@@ -108,14 +123,20 @@ app.get("/flats", async (req, res) => {
     } catch (error) {
         console.error('SQL FLAT error', error);
         res.status(500).send('Server FLAT error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 
 app.post("/visitors", async (req, res) => {
     const { name, mobileNumber, date, image, wingCode, flatID, ID, SocietyID, Year } = req.body;
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
 
         // Query Database to get the Max Code from the Table
         const codeQuery = "SELECT MAX(CAST(Code AS INT)) AS MaxCode FROM [dbo].[VisitorMaster]";
@@ -156,17 +177,27 @@ app.post("/visitors", async (req, res) => {
     } catch (error) {
         console.error(" 🔴SQL VISITORS POST ERROR", error);
         res.status(500).send(' 🔴Server error while adding visitor data');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 app.get("/visitors", async (req, res) => {
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         const result = await request.query('SELECT v.[Name],v.[Date],v.Wing ,w.WingName,v.Flat,f.FlatNumber,concat(v.[Wing],v.[Flat]) As WingFlat,v.[MobileNumber],v.[Photo] FROM [dbo].[VisitorMaster] v left join WingMaster w on w.WingCode=v.Wing and w.SocietyID=v.SocietyID and w.Prefix=v.Prefix left join FlatMaster f on f.ID=v.Flat and f.SocietyID=v.SocietyID and f.Prefix=v.Prefix');
         res.json(result.recordsets[0]);
     } catch (err) {
         console.error('SQL error', err);
         res.status(500).send('Server error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
@@ -179,8 +210,10 @@ app.post('/member/login', async (req, res) => {
 
     const decryptedPassword = encrypt(password)
 
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         request.input('mobileNumber', sql.VarChar, mobileNumber);
         request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
@@ -204,10 +237,15 @@ app.post('/member/login', async (req, res) => {
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).json({ msg: 'Server error' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 app.get('/member/nomination', async (req, res) => {
+    let connection;
     try {
         const societyid = req.headers['societyid'];
         const userid = req.headers['userid'];
@@ -225,7 +263,8 @@ app.get('/member/nomination', async (req, res) => {
         console.log("Cookies-UserID: ", userid);
 
         // Initializing a new SQL Request
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         // Add parameters to the request
         request.input('SocietyID', sql.VarChar, societyid);
         request.input('UserID', sql.VarChar, userid);
@@ -236,15 +275,21 @@ app.get('/member/nomination', async (req, res) => {
     } catch (error) {
         console.error('SQL NOMINATION GET error', error);
         res.status(500).json({ msg: 'Server NOMINATION GET error' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 app.post('/member/complaint', async (req, res) => {
 
     const { subject, description, image, date, status, MemberSocietyID, MemberID, UserID, MemberYear, MemberName, MemberWing, MemberFlat } = req.body
+    let connection;
     try {
 
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
 
         const codeQuery = "SELECT MAX(CAST(ComplaintCode AS INT)) AS MaxCode FROM [vijay_DemoSociety].[dbo].[ComplaintMaster]";
         const codeResult = await request.query(codeQuery);
@@ -283,11 +328,16 @@ app.post('/member/complaint', async (req, res) => {
     } catch (error) {
         console.error(" 🔴SQL COMPLAINT POST ERROR", error);
         res.status(500).send(' 🔴Server error while posting complaints');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 app.get('/member/complaints', async (req, res) => {
 
+    let connection;
     try {
 
         const memberId = req.headers['memberid'];
@@ -301,7 +351,8 @@ app.get('/member/complaints', async (req, res) => {
             return res.status(400).send('Missing headers');
         }
 
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         request.input('memberId', sql.VarChar, memberId);
         const query = `
             SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster] WHERE MemberID = @memberId
@@ -311,6 +362,10 @@ app.get('/member/complaints', async (req, res) => {
     } catch (error) {
         console.error(" 🔴SQL COMPLAINT GET ERROR", error);
         res.status(500).send(' 🔴Server error while fetching complaints');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
@@ -319,9 +374,10 @@ app.post('/fm/login', async (req, res) => {
 
     const decryptedPassword = encrypt(password)
 
-
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         request.input('userId', sql.VarChar, userId);
         request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
@@ -340,10 +396,15 @@ app.post('/fm/login', async (req, res) => {
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).json({ msg: 'Server error' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 app.get('/fm/allcomplaints', async (req, res) => {
+    let connection;
     try {
 
         const societyID = req.headers['societyid'];
@@ -357,22 +418,28 @@ app.get('/fm/allcomplaints', async (req, res) => {
             return res.status(400).send('Missing headers');
         }
 
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         request.input('societyID', sql.VarChar, societyID);
         const result = await request.query('SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster_Details] WHERE SocietyID = @societyID');
         res.json(result.recordsets[0]);
     } catch (err) {
         console.error('SQL error', err);
         res.status(500).send('Server error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 app.post('/member/service-request', async (req, res) => {
 
     const { subject, description, date, image, serviceStatus, serviceName, serviceCode, MemberSocietyID, MemberID, UserID, MemberYear, MemberName, MemberWing, MemberFlat, MemberCode, MemberMobileNumber } = req.body
-
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
 
         // const codeIDQuery = "SELECT MAX(ID) AS MaxCode FROM [vijay_DemoSociety].[dbo].[Service]"
         // const codeIDResult = await request.query(codeIDQuery)
@@ -423,19 +490,29 @@ app.post('/member/service-request', async (req, res) => {
     } catch (error) {
         console.error(" 🔴SQL SERVICE POST ERROR", error);
         res.status(500).send(' 🔴Server error while posting service requests');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 
 app.get('/member/service-requests', async (req, res) => {
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         // request.input('societyID', sql.VarChar, societyID);
         const result = await request.query('SELECT [ID],[Code],[ServiceName],[Date],[Wing],[Flat],[Name],[Mobile],[MemberID],[MemberCode],[MemberName],[Subject],[Description],[ServiceCode],[Status],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted],[file] FROM [vijay_DemoSociety].[dbo].[Service]');
         res.json(result.recordsets[0]);
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).send('Server error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
@@ -445,8 +522,10 @@ app.post('/admin/login', async (req, res) => {
 
     const decryptedPassword = encrypt(password);
 
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         request.input('userId', sql.VarChar, userId);
         request.input('password', sql.VarChar, decryptedPassword);
         request.input('year', sql.Int, year);
@@ -465,10 +544,15 @@ app.post('/admin/login', async (req, res) => {
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).json({ msg: 'Server error' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 app.get('/member/parking-slot', async (req, res) => {
+    let connection;
     try {
         const societyid = req.headers['societyid'];
         const userid = req.headers['userid'];
@@ -484,7 +568,8 @@ app.get('/member/parking-slot', async (req, res) => {
         }
 
         // Initializing a new SQL Request
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         // Add parameters to the request
         request.input('societyid', sql.VarChar, societyid);
         request.input('userid', sql.VarChar, userid);
@@ -495,11 +580,16 @@ app.get('/member/parking-slot', async (req, res) => {
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).json({ msg: 'Server error' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 
 app.get('/member/account-ledger', async (req, res) => {
+    let connection;
     try {
 
         const societyid = req.headers['societyid'];
@@ -516,7 +606,8 @@ app.get('/member/account-ledger', async (req, res) => {
         }
 
         // Initializing a new SQL Request
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         // Add parameters to the request
         request.input('societyid', sql.VarChar, societyid);
         request.input('userid', sql.VarChar, userid);
@@ -554,13 +645,19 @@ app.get('/member/account-ledger', async (req, res) => {
     } catch (error) {
         console.log("SQL LEDGER GET ERROR", error)
         res.status(500).json({ msg: "Server Error" })
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 
 app.get('/admin/complaint-track', async (req, res) => {
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         const query = `
             SELECT [ID],[ComplaintCode],[Code],[MemberID],[MemberName],[Date],[Wing],[Flat],[Subject],[Description],[Status],[File],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[ComplaintMaster]
         `;
@@ -569,27 +666,39 @@ app.get('/admin/complaint-track', async (req, res) => {
     } catch (error) {
         console.error(" 🔴SQL COMPLAINT GET ERROR", error);
         res.status(500).send(' 🔴Server error while fetching complaints');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 app.get('/admin/service-requests', async (req, res) => {
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         // request.input('societyID', sql.VarChar, societyID);
         const result = await request.query('SELECT [ID],[Code],[ServiceName],[Date],[Wing],[Flat],[Name],[Mobile],[MemberID],[MemberCode],[MemberName],[Subject],[Description],[ServiceCode],[Status],[Prefix],[UserID],[SocietyID],[IsActive],[IsDeleted],[file] FROM [vijay_DemoSociety].[dbo].[Service]');
         res.json(result.recordsets[0]);
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).send('Server error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 app.get('/admin/parking-slot', async (req, res) => {
+    let connection;
     try {
 
 
         // Initializing a new SQL Request
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         // Add parameters to the request
 
         const result = await request.query("SELECT [ID],[Code],[Date],[Slot],[Member],[SlotCode],[Name],[UserId],[SocietyId],[Prefix],[IsActive],[IsDeleted] FROM [vijay_DemoSociety].[dbo].[AssignSlot]");
@@ -598,14 +707,20 @@ app.get('/admin/parking-slot', async (req, res) => {
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).json({ msg: 'Server error' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 })
 
 app.post('/notices', async (req, res) => {
     const { title, content, author } = req.body;
 
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
 
         // Generate a unique code for the notice
         // const codeQuery = "SELECT MAX(CAST(Code AS INT)) AS MaxCode FROM [dbo].[NoticeMaster]";
@@ -637,12 +752,18 @@ app.post('/notices', async (req, res) => {
     } catch (error) {
         console.error(" 🔴SQL NOTICE POST ERROR", error);
         res.status(500).send(' 🔴Server error while adding notice');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 app.get('/notices', async (req, res) => {
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
 
         const query = `
             SELECT [ID], [Title], [Content], [Author], [Date]
@@ -656,16 +777,21 @@ app.get('/notices', async (req, res) => {
     } catch (error) {
         console.error(" 🔴SQL NOTICE GET ERROR", error);
         res.status(500).send(' 🔴Server error while fetching notices');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 
 // Create a new poll
 app.post('/polls', async (req, res) => {
+    let connection;
     try {
         const { question, options } = req.body;
-        const request = new sql.Request();
-        const result = await request
+        connection = await getDbConnection();
+        const result = await connection.request()
             .input('question', sql.NVarChar, question)
             .input('options', sql.NVarChar, JSON.stringify(options))
             .input('votes', sql.NVarChar, JSON.stringify(new Array(options.length).fill(0)))
@@ -675,14 +801,19 @@ app.post('/polls', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 // Get all polls
 app.get('/polls', async (req, res) => {
+    let connection;
     try {
-        // const pool = await sql.connect(config);
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         const query = `SELECT * FROM Polls`;
         const result = await request.query(query);
         res.json(result.recordset.map(poll => ({
@@ -693,18 +824,23 @@ app.get('/polls', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 // Vote on a poll
 app.post('/polls/:id/vote', async (req, res) => {
+    let connection;
     try {
         const { id } = req.params;
         const { optionIndex } = req.body;
 
+        connection = await getDbConnection();
         // First, get the current votes
-        const request = new sql.Request();
-        const currentPoll = await request
+        const currentPoll = await connection.request()
             .input('id', sql.Int, id)
             .query('SELECT votes FROM Polls WHERE id = @id');
 
@@ -712,7 +848,7 @@ app.post('/polls/:id/vote', async (req, res) => {
         votes[optionIndex]++;
 
         // Update the votes
-        const updateRequest = new sql.Request();
+        const updateRequest = connection.request();
         await updateRequest
             .input('id', sql.Int, id)
             .input('votes', sql.NVarChar, JSON.stringify(votes))
@@ -722,6 +858,10 @@ app.post('/polls/:id/vote', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
@@ -729,9 +869,10 @@ app.post('/polls/:id/vote', async (req, res) => {
 app.post('/api/create-register', async (req, res) => {
     const { owners, jointMembers } = req.body;
 
+    let connection;
     try {
-        const pool = await sql.connect(dbConfig);
-        const transaction = new sql.Transaction(pool);
+        connection = await getDbConnection();
+        const transaction = new sql.Transaction(connection);
 
         try {
             await transaction.begin();
@@ -766,13 +907,18 @@ app.post('/api/create-register', async (req, res) => {
     } catch (error) {
         console.error('Error creating J Register:', error);
         res.status(500).json({ message: 'Error creating J Register' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 app.get('/api/all-registers', async (req, res) => {
+    let connection;
     try {
-        const pool = await sql.connect(dbConfig);
-        const result = await pool.request().query(`
+        connection = await getDbConnection();
+        const result = await connection.request().query(`
             SELECT 
                 ID AS RegisterID,
                 Code AS RegisterCode,
@@ -796,12 +942,17 @@ app.get('/api/all-registers', async (req, res) => {
     } catch (error) {
         console.error('Error fetching all registers:', error);
         res.status(500).json({ message: 'Error fetching all registers' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
 // ... existing code ...
 
 app.get('/member/visitors', async (req, res) => {
+    let connection;
     try {
         const wingCode = req.headers['wingcode'];
         const flatId = req.headers['flatid'];
@@ -815,7 +966,8 @@ app.get('/member/visitors', async (req, res) => {
             return res.status(400).send('Missing headers: wingCode and flatId are required');
         }
 
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         request.input('wingCode', sql.VarChar, wingCode);
         request.input('flatId', sql.Int, flatId);
 
@@ -839,6 +991,10 @@ app.get('/member/visitors', async (req, res) => {
     } catch (error) {
         console.error('SQL error', error);
         res.status(500).json({ msg: 'Server error while fetching visitor data' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
@@ -847,8 +1003,10 @@ app.get('/member/visitors', async (req, res) => {
 app.post('/sendNotification', async (req, res) => {
     const { wingCode, flatID, message } = req.body;
 
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
         request.input('wingCode', sql.VarChar, wingCode);
         request.input('flatID', sql.Int, flatID);
 
@@ -871,6 +1029,10 @@ app.post('/sendNotification', async (req, res) => {
     } catch (error) {
         console.error('Error sending notification:', error);
         res.status(500).json({ msg: 'Server error' });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 });
 
@@ -916,8 +1078,10 @@ async function updateVisitorStatus(response, wingCode, flatID) {
 }
 
 async function notifySecurityAboutVisitor(response, wingCode, flatID) {
+    let connection;
     try {
-        const request = new sql.Request();
+        connection = await getDbConnection();
+        const request = connection.request();
 
         // Fetch the watchman's expoPushToken
         const query = `
@@ -943,6 +1107,10 @@ async function notifySecurityAboutVisitor(response, wingCode, flatID) {
         }
     } catch (error) {
         console.error('Error notifying security about visitor:', error);
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
 }
 
