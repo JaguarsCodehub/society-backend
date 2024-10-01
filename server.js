@@ -795,6 +795,51 @@ app.get('/api/all-registers', async (req, res) => {
     }
 });
 
+// ... existing code ...
+
+app.get('/member/visitors', async (req, res) => {
+    try {
+        const wingCode = req.headers['wingcode'];
+        const flatId = req.headers['flatid'];
+
+        // Log the headers to check if they are being received
+        console.log("Headers received:", req.headers);
+
+        // Validate if these headers exist
+        if (!wingCode || !flatId) {
+            console.log("Missing Headers");
+            return res.status(400).send('Missing headers: wingCode and flatId are required');
+        }
+
+        const request = new sql.Request();
+        request.input('wingCode', sql.VarChar, wingCode);
+        request.input('flatId', sql.Int, flatId);
+
+        const query = `
+            SELECT [Name], [MobileNumber], [Date], [Photo]
+            FROM [dbo].[VisitorMaster]
+            WHERE Wing = @wingCode AND Flat = @flatId
+            ORDER BY [Date] DESC
+        `;
+
+        const result = await request.query(query);
+
+        if (result.recordset.length > 0) {
+            res.status(200).json({
+                msg: '🟢 Visitor data fetched successfully',
+                data: result.recordset
+            });
+        } else {
+            res.status(404).json({ msg: 'No visitors found for this flat' });
+        }
+    } catch (error) {
+        console.error('SQL error', error);
+        res.status(500).json({ msg: 'Server error while fetching visitor data' });
+    }
+});
+
+// ... rest of your code ...
+
 app.post('/sendNotification', async (req, res) => {
     const { wingCode, flatID, message } = req.body;
 
@@ -960,3 +1005,4 @@ async function sendPushNotificationToWatchman(expoPushToken, message, wingCode, 
 //     votes NVARCHAR(MAX) NOT NULL,
 //     created_at DATETIME DEFAULT GETDATE()
 // );
+
