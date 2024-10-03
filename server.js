@@ -174,7 +174,6 @@ app.post("/visitors", async (req, res) => {
         const result = await request.query(query);
         res.status(200).json({ msg: '🟢 Data was added to the Database successfully', data: result.recordset });
 
-
     } catch (error) {
         console.error(" 🔴SQL VISITORS POST ERROR", error);
         res.status(500).send(' 🔴Server error while adding visitor data');
@@ -372,7 +371,7 @@ app.get('/member/complaints', async (req, res) => {
 app.post('/fm/login', async (req, res) => {
     const { userId, password, year } = req.body;
 
-    const decryptedPassword = encrypt(password)
+    const decryptedPassword = encrypt(password);
 
     let connection;
     try {
@@ -446,11 +445,6 @@ app.post('/member/service-request', async (req, res) => {
         const codeQuery = "SELECT MAX(CAST(Code AS INT)) AS MaxCode FROM [vijay_DemoSociety].[dbo].[Service]";
         const codeResult = await request.query(codeQuery);
 
-        // let newCodeID = 0;
-        // if (codeIDResult.recordset.length > 0 && codeIDResult.recordset[0].MaxCode !== null) {
-        //     const maxCode = parseInt(codeIDResult.recordset[0].MaxCode, 10);
-        //     newCodeID = (maxCode + 1)
-        // }
 
         let newCode = "0001"; // Default value if no records are found
         if (codeResult.recordset.length > 0 && codeResult.recordset[0].MaxCode !== null) {
@@ -1067,12 +1061,12 @@ app.post('/visitorResponse', async (req, res) => {
 async function updateVisitorStatus(response, wingCode, flatID) {
     // Implement the logic to update the visitor's status in your database
     // For example:
-    // const request = new sql.Request();
-    // await request.query`
-    //     UPDATE VisitorTable
-    //     SET Status = ${response}, WingCode = ${wingCode}, FlatID = ${flatID}
-    //     WHERE VisitorID = ${visitorId}
-    // `;
+    const request = new sql.Request();
+    await request.query`
+        UPDATE VisitorTable
+        SET Status = ${response}, WingCode = ${wingCode}, FlatID = ${flatID}
+        WHERE VisitorID = ${visitorId}
+    `;
 
     console.log("VisitorStatusUpdated:", response, wingCode, flatID)
 }
