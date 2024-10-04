@@ -18,7 +18,7 @@ function encrypt(plainText) {
     return encrypted.toString('base64').replace(/\+/g, ' ');
 }
 
-const plainText = '123';
+const plainText = '456';
 const cipherText = encrypt(plainText);
 console.log('Encrypted:', cipherText);
 
